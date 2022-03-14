@@ -1,3 +1,4 @@
+import datetime
 from mansiones import Mansiones, NO_ARTICLE_RESULTS
 
 TEST_RSS_URL = "http://feeds.bbci.co.uk/news/rss.xml"
@@ -323,9 +324,13 @@ TEST_RSS_DATA = """
     </channel>
 </rss>"""
 
+# hack for testing as RSS sample is dated 2022/12/3
+# without test will failed as all articles after one day will be filtered
+passed_hours = (datetime.datetime.now() - datetime.datetime(2022, 3, 12, 1, 1, 1, 1)).days * 24
+
 
 def test_parse_rss_str():
-    mansiones = Mansiones()
+    mansiones = Mansiones(fresh_article_has_hours=passed_hours)
     result = mansiones.parse_rss_str(TEST_RSS_DATA)
     assert isinstance(result, dict)
     assert 'source' in result
@@ -337,14 +342,15 @@ def test_parse_rss_str():
 
 
 def test_parse_rss_str_if_wrong_data():
-    mansiones = Mansiones()
+    mansiones = Mansiones(fresh_article_has_hours=passed_hours)
     result = mansiones.parse_rss_str('This is wrong data')
     assert result == NO_ARTICLE_RESULTS
     result = mansiones.parse_rss_str(False)
     assert result == NO_ARTICLE_RESULTS
 
+
 def test_prepare_articles_titles_as_txt():
-    mansiones = Mansiones()
+    mansiones = Mansiones(fresh_article_has_hours=passed_hours)
     raw = mansiones.parse_rss_str(TEST_RSS_DATA)
     result = mansiones.prepare_articles_titles_as_txt(raw)
     assert isinstance(result, str)

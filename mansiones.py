@@ -1,3 +1,5 @@
+import datetime
+import time
 from typing import Union
 
 import feedparser
@@ -327,13 +329,18 @@ TEST_RSS_DATA = """
 
 
 def show_rss():
+    """
+    only for testing to check how feedparser really works
+    :return:
+    """
     d = feedparser.parse(TEST_RSS_DATA)
     print(d['feed']['title'])
     print(d.keys())
+    print(d['entries'][0])
     print(d)
 
 
-NO_ARTICLE_RESULTS = {'source': '', 'url': '', 'articles': {} }
+NO_ARTICLE_RESULTS = {'source': '', 'url': '', 'articles': {}}
 
 
 class Mansiones:
@@ -342,8 +349,8 @@ class Mansiones:
 
     """
 
-    def __init__(self):
-        self.data: dict = {}
+    def __init__(self, fresh_article_has_hours=6):
+        self.default_hours_back = fresh_article_has_hours
 
     def parse_rss_str(self, fetched_data: str) -> dict:
         """
@@ -366,8 +373,23 @@ class Mansiones:
         feed = data['feed']
         return {'source': feed['title'],
                 'url': feed['link'],
-                'articles': {art['title']: art['link'] for art in data['entries']}
+                'articles': {art['title']: art['link'] for art in data['entries']
+                             if self.is_date_in_range(art['published_parsed'])
+                             }
                 }
+
+    def is_date_in_range(self, checked_date: time.struct_time):
+        """
+        To avoid too much text to analysis only latest article title is used
+        :param checked_date:
+        :return:
+        """
+        art_date = checked_date
+        parsed_date = datetime.datetime(art_date.tm_year, art_date.tm_mon, art_date.tm_mday, art_date.tm_hour,
+                                        art_date.tm_min, art_date.tm_sec)
+        today = datetime.datetime.today()
+        date_offset = datetime.timedelta(hours=self.default_hours_back)
+        return today - date_offset <= parsed_date <= today + date_offset
 
     def prepare_articles_titles_as_txt(self, articles_to_show: Union[list[dict], dict]) -> str:
         """
@@ -389,6 +411,8 @@ class Mansiones:
 
 if __name__ == '__main__':
     show_rss()
-    mansiones = Mansiones()
+    # hack for testing as RSS sample is dated 2022/12/3
+    passed_hours = (datetime.datetime.now() - datetime.datetime(2022, 3, 12, 1, 1, 1, 1)).days * 24
+    mansiones = Mansiones(fresh_article_has_hours=passed_hours)
     arts = mansiones.parse_rss_str(TEST_RSS_DATA)
     print(mansiones.prepare_articles_titles_as_txt(arts))
